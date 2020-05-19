@@ -1,1 +1,422 @@
-<h1>Hello!</h1>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0">
+<title>Picker</title>
+<style>
+body {
+    background:#FFF;
+    color:#000;
+    font-family:verdana, sans-serif;
+    font-size:10pt;
+    margin:0;
+    padding:10px;
+}
+
+a:link, a:visited {
+    color:#008;
+    font-weight:bold;
+    text-decoration:none;
+}
+
+a:active, a:hover {
+    color:#ACF;
+}
+
+.info {
+    font-weight:bold;
+}
+
+button {
+    font-family:inherit;
+    cursor:pointer;
+    border:0;
+    border-radius:3px;
+    padding:0.3em 0.5em;
+    background:#CCC;
+    color:#000;
+}
+
+button:hover {
+    background:#DDD;
+}
+
+button.disabled {
+    background:#DDD;
+    color:#888;
+    cursor:not-allowed;
+}
+
+button.disabled:hover {
+    background:#DDD;
+}
+
+#container {
+    position:relative;
+    margin-left:-10px;
+    margin-right:-10px;
+    padding:10px;
+    overflow:hidden;
+}
+
+@media (min-width:1024px) {
+    /* Put the found favorites beside the picking div when the window is sufficiently large */
+    #picking {
+        float:left;
+        width:636px;
+    }
+
+    #secondary {
+        margin-left:646px;
+    }
+}
+
+@media (min-width:1300px) {
+    /* Once we get to the point where 636px is less than half of the width of the screen, make the picking div just take up half */
+    #picking {
+        width:50%;
+    }
+
+    #secondary {
+        margin-left:51%;
+    }
+}
+
+#pick {
+    background:#58F;
+    color:#FFF;
+    font-size:larger;
+    font-weight:bold;
+    width:6em;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+#pick.disabled {
+    background:#ACF;
+}
+
+#pick:hover {
+    background:#ACF;
+}
+
+.item-list {
+    padding:0;
+    list-style-type:none;
+    line-height:100px;
+}
+
+.item-list li {
+    margin:0;
+    display:inline-block;
+    height:100px;
+    width:100px;
+    line-height:100px;
+    border:3px solid transparent;
+    text-align:center;
+    position:relative;
+    vertical-align:top;
+    overflow:hidden;
+    border-radius:100%;
+    background:#F7F7F7;
+    color:#000;
+}
+
+.item-list li img {
+    vertical-align:middle;
+    max-height:100%;
+    max-width:100%;
+}
+
+.item-list li span {
+    display:inline-block;
+    vertical-align:middle;
+    line-height:1.2;
+}
+
+@media (max-width:636px) {
+    .item-list {
+        line-height:75px;
+    }
+
+    .item-list li {
+        line-height:75px;
+        height:75px;
+        width:75px;
+    }
+}
+
+@media (max-width:423px) {
+    .item-list {
+        line-height:50px;
+    }
+
+    .item-list li {
+        line-height:50px;
+        height:50px;
+        width:50px;
+    }
+}
+
+#evaluating li {
+    cursor:pointer;
+}
+
+#favorites li {
+    cursor:move;
+}
+
+.item-list li:hover {
+    background:#CDF;
+}
+
+.item-list.sorting li:hover {
+    background:#F7F7F7;
+}
+
+#evaluating li.selected {
+    border:3px solid #7AC;
+}
+
+#evaluating, #buttons {
+    text-align:center;
+    margin:auto;
+}
+
+#evaluating li.notice {
+    width:auto;
+    height:auto;
+    max-width:260px;
+    margin:auto;
+    background:#F7F7F7;
+    border-radius:10px;
+    padding:30px 30px;
+    color:#000;
+    text-align:center;
+    line-height:1.4;
+    cursor:auto;
+    font-size:10pt;
+}
+
+#buttons {
+    margin-top:30px;
+    position:relative;
+    z-index:3;
+}
+</style>
+</head>
+<body>
+<h1>Picker</h1>
+
+<p>You can include any content you want here.</p>
+
+<div id="container">
+
+<div id="picking">
+<ul id="evaluating" class="item-list">
+</ul>
+
+<p id="buttons"><button id="pick">Pick</button> <button id="pass">Pass</button> <button id="undo">Undo</button> <button id="redo">Redo</button></p>
+</div>
+
+<div id="secondary">
+<h2>Found favorites</h2>
+
+<ol id="favorites" class="item-list">
+</ol>
+</div>
+</div>
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+<script src="picker.js"></script>
+<script src="picker-ui.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.7.0/Sortable.min.js"></script>
+<script>
+'use strict';
+
+var items = [
+    {id: 'Alleria', name: 'Alleria', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/d9/Card_back-Alleria.png?version=7389f4a4006e1dd08d197f787c228578'},
+    {id: 'Blossom', name: 'Awesome Blossom', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/76/Card_back-Awesome_Blossom.png?version=a4f1aeb071f2156215bdb098f57c18a5'},
+    {id: 'AiB', name: 'Azeroth is Burning', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/12/Card_back-Azeroth_is_Burning.png?version=93daf291effe26379b234f68aa76a4b0'},
+    {id: 'classic', name: 'Classic', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/1a/Card_back-Classic.png?version=8829b5a8a2afb9af39aebed29feb0cb6'},
+    {id: 'Legend', name: 'Legend', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/66/Card_back-Legend.png?version=4e4f1ac6cb4d63c057513664075b4c0f'},
+    {id: 'Fireside', name: 'Fireside Gathering', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/38/Card_back-Fireside.png?version=b8df93b873d19f4f4b57d9431799663c'},
+    {id: 'Galaxy', name: 'Samsung Galaxy', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/6b/Card_back-Samsung_Galaxy.png?version=8a7644ff902f841e0738d985c5ab08d3'},
+    {id: 'Machine', name: 'Machine Dreams', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/57/Card_back-Machine_Dreams.png?version=73262a67c5b3ea15faac90ee1a69d48a'},
+    {id: 'LegionS', name: 'Legion Schemes', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/5c/Card_back-Legion_Schemes.png?version=7a324aa32f0715124e372016259d1fc4'},
+    {id: 'Pristine', name: 'Pristine Scenes', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/c5/Card_back-Pristine_Scenes.png?version=989d80bbbb137f38c0e77a3c21248cf5'},
+    {id: 'Hakkar', name: 'Mark of Hakkar', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/cf/Card_back-Mark_of_Hakkar.png?version=a815da34070eb946ad883f09809e8b8b'},
+    {id: 'Pandaria', name: 'Pandaria', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/4c/Card_back-Pandaria.png?version=93825909dfcb558822ad52efb8c90cc5'},
+    {id: 'BTemple', name: 'Black Temple', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/f/f3/Card_back-Black_Temple.png?version=4f39a34ff0677c2adc6fe3c0a916c484'},
+    {id: 'Rainbow', name: 'Rainbow!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/84/Card_back-Rainbow%21.png?version=7c177dd668d9f1c375e21f070b77b9ab'},
+    {id: 'Naxx', name: 'Naxxramas', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/13/Card_back-Naxxramas.png?version=49112bea35efdf8326af9794a824f841'},
+    {id: 'Icecrown', name: 'Icecrown', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e4/Card_back-Icecrown.png?version=dfdfdd650c7dcee4e2c71084ee4db124'},
+    {id: 'Pirates', name: 'Pirates!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/0b/Card_back-Pirates%21.png?version=386e52e582fe71c76bc019eb2e99dda4'},
+    {id: 'Hallow', name: "Hallow's End", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/95/Card_back-Hallow%27s_End.png?version=7d72837abc72eac7e0c15e5014ea83b6'},
+    {id: 'Gobs', name: 'Goblins', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/de/Card_back-Goblins.png?version=fa28beae8ceee8656ea792b869ac7a15'},
+    {id: 'Gnome', name: 'Gnomes', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/37/Card_back-Gnomes.png?version=5094e878671b54251308c4fb36aa066d'},
+    {id: 'Maraad', name: 'Maraad', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/1d/Card_back-Maraad.png?version=67e85eddd96e832e143492ad9063afe2'},
+    {id: 'LNY', name: 'Lunar New Year', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/89/Card_back-Lunar_New_Year.png?version=6470aa678b74069b82b860e3e7eb2552'},
+    {id: 'Rag', name: 'Ragnaros', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/df/Card_back-Ragnaros.png?version=c0a214b3e76b77aff2f5ee810ebcc463'},
+    {id: 'cup', name: 'Cupcake', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/33/Card_back-Cupcake.png?version=bf6817c42073833aaf45ddf966098186'},
+    {id: 'ninj', name: 'Ninjas!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/27/Card_back-Ninjas%21.png?version=cbd1f3472775bc6d99cb86a87a3c896d'},
+    {id: 'darn', name: 'Darnassus', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/de/Card_back-Darnassus.png?version=dd4a0636d0ceaedb8899d6e98341b2f2'},
+    {id: 'dspear', name: 'Darkspear', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/a0/Card_back-Darkspear.png?version=58bd27e70aea1e363ebd7e3b519f09f0'},
+    {id: 'tourn', name: 'Tournament Grounds', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/bc/Card_back-Tournament_Grounds.png?version=a7e371b31e1895ee9f7aed30d7cdcc42'},
+    {id: 'exodar', name: 'Exodar', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/9d/Card_back-Exodar.png?version=09e6d1c7330893d28de7e608f62ff093'},
+    {id: 'hmaul', name: 'Highmaul', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/19/Card_back-Highmaul.png?version=5d792796ca08c3277519086421560865'},
+    {id: 'exmap', name: "Explorer's Map", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/58/Card_back-Explorer%27s_Map.png?version=2e6100a3bce9525dd56e02eba4d3237f'},
+    {id: 'sthrall', name: 'Shaman Thrall', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/54/Card_back-Shaman_Thrall.png?version=73e78b819d758179d84015d97717512b'},
+    {id: 'Liita', name: 'Love Is in the Air', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7c/Card_back-Love_Is_in_the_Air.png?version=574e431c11f46c95461b7aabc76be740'},
+    {id: 'TBluf', name: 'Thunder Bluff', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/cf/Card_back-Thunder_Bluff.png?version=5edbc535570ec7abca7d4e58d87fc2ca'},
+    {id: 'Hog', name: 'Hogger', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/66/Card_back-Hogger.png?version=03d07472a2bb15ff02be21bf3f9c04e9'},
+    {id: 'Yogg', name: 'Clutch of Yogg-Saron', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/ac/Card_back-Clutch_of_Yogg-Saron.png?version=8ad42e470c020535fce681cbc9eee16c'},
+    {id: 'SmoonV', name: 'Shadowmoon Valley', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/10/Card_back-Shadowmoon_Valley.png?version=37c9c9bc2d809bbb9b8e5339f69b2a95'},
+    {id: 'Zuldrak', name: "Zul'Drak", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/9d/Card_back-Zul%27Drak.png?version=00ee0e0f363dceb62520f6f26e8796e5'},
+    {id: 'Tinyfin', name: 'Tinyfin Beach', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/84/Card_back-Tinyfin_Beach.png?version=ff0263f6c402e33b36978ea9166d6663'},
+    {id: 'MInvitation', name: "Medivh's Invitation", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/d9/Card_back-Medivh%27s_Invitation.png?version=823ff5fae925d9264164318f150391a2'},
+    {id: 'Legion', name: 'Legion', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/6f/Card_back-Legion.png?version=2df07e2ec74e642ed540886f521ef6bb'},
+    {id: 'Pie', name: 'Pie', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/a2/Card_back-Pie.png?version=b6902a9ffb506a67fe42082caabe8dbf'},
+    {id: 'HHill', name: 'Halfhill', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/bf/Card_back-Halfhill.png?version=c65254c0bb3a66a9537e81ad9b64a626'},
+    {id: 'Lotus', name: 'Jade Lotus', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/43/Card_back-Jade_Lotus.png?version=ac05f02256b87029e335dc2755dac1a5'},
+    {id: 'Goons', name: 'Grimy Goons', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/4f/Card_back-Grimy_Goons.png?version=4b585789a0d33d631e4e963718e21877'},
+    {id: 'Kabal', name: 'Kabal', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/2c/Card_back-Kabal.png?version=7ebee40a73187436e4c06326feb03d5d'},
+    {id: 'Kraken', name: 'Year of the Kraken', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/09/Card_back-Year_of_the_Kraken.png?version=422e6457fd4fdfbd90411e5857561db1'},
+    {id: 'GoroMyst', name: "Un'Goro Mystery", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/a0/Card_back-Un%27Goro_Mystery.png?version=eb209cd60cb436475e578a7615b9322a'},
+    {id: 'Sunwell', name: 'Sunwell', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/4a/Card_back-Sunwell.png?version=14042fcf582b0904aa09db6e6cb8e727'},
+    {id: 'TMODal', name: 'The Magic of Dalaran', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/ca/Card_back-The_Magic_of_Dalaran.png?version=99e70e26884794e8f37d4c151e1bc38d'},
+    {id: 'Smore', name: "HearthS'mores", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e6/Card_back-HearthS%27mores.png?version=600e7c2b2d9a7e5ddc7c115a06cadf7e'},
+    {id: 'BKnight', name: 'Blood Knight', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/29/Card_back-Blood_Knight.png?version=8f6c8f7c6b2f7414edac231f40cee43c'},
+    {id: 'FKnight', name: 'Frost Knight', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/02/Card_back-Frost_Knight.png?version=58d13e7862bc7028a5cc1949d434dc64'},
+    {id: 'UKnight', name: 'Unholy Knight', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/bd/Card_back-Unholy_Knight.png?version=b5cd92d48cfb44964d3555e84017505a'},
+    {id: 'GFish', name: 'Gone Fishin', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/94/Card_back-Gone_Fishin.png?version=950c402b969a71b76677c883f9d70913'},
+    {id: 'Catac', name: 'Catacomber', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/12/Card_back-Catacomber.png?version=af9439aea187d71e16870b35c4cf5904'},
+    {id: 'FFire', name: 'Frostfire', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7a/Card_back-Frostfire.png?version=3b2204eec3078ac50d984f7ad7017e9a'},
+    {id: 'Sparkles', name: 'Sparkles', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e6/Card_back-Sparkles.png?version=0d0fdbc45513bc801610ef5f90b3135e'},
+    {id: 'Mammoth', name: 'Year of the Mammoth', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/c3/Card_back-Year_of_the_Mammoth.png?version=e5380b809d540734170e249a79e631d9'},
+    {id: 'RtR', name: 'Raise the Roof', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/c/c6/Card_back-Raise_the_Roof.png?version=553918ecf86cd0b124916ab52bae46c9'},
+    {id: 'LGarden', name: "Lunara's Garden", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/54/Card_back-Lunara%27s_Garden.png?version=41f555e389ad67445acd2587c26ed0c8'},
+    {id: 'BiBlue', name: 'Back in Blue', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/52/Card_back-Back_in_Blue.png?version=980029e7dd819bf499bc82ba0b3527fd'},
+    {id: 'Lforged', name: 'Lightforged', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/a0/Card_back-Lightforged.png?version=021e3f341eb035c090b5e00a7dfa0aa7'},
+    {id: 'Lemon', name: 'Lemonade', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/ef/Card_back-Lemonade.png?version=c1308b43e494754be09cbec20aabd3fc'},
+    {id: 'BoomLab', name: "Dr. Boom's Lab", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/b9/Card_back-Dr._Boom%27s_Lab.png?version=ca7d289be7d462d4857bec8a0a095a6a'},
+    {id: 'VanCard', name: 'VanCardBack', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/0e/Card_back-VanCardback.png?version=44a7c8d80cc7d465568e7de0c8d52e58'},
+    {id: 'Moonwell', name: 'Moonwell', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/54/Card_back-Moonwell.png?version=8c7f2943d8928981056ce5cfb43aa127'},
+    {id: 'Frostwolf', name: 'Frostwolf', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/51/Card_back-Frostwolf.png?version=db6a028f91036c7cecfa653861aa7a95'},
+    {id: 'Chillin', name: "Chillin'", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/60/Card_back-Chillin%27.png?version=ee8f3795067709d681d70c2049123bab'},
+    {id: 'Pizza', name: 'PizzaStone', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/8d/Card_back-PizzaStone.png?version=1682323a1eb3a16887aa88068fd58282'},
+    {id: 'Kultiras', name: 'Kul Tiras', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/84/Card_back-Kul_Tiras.png?version=6d75d9c57fe873718c224d6b8f81b02a'},
+    {id: 'Shadows', name: 'Card of Shadows', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/25/Card_back-Card_of_Shadows.png?version=fd170d1517d2d4a4becf93e99fe1130e'},
+    {id: 'Suramar', name: 'Suramar', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/de/Card_back-Suramar.png?version=60dfbe2f4300ec8a95375fdce1698b93'},
+    {id: 'Shado', name: 'Shado-pan', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/1a/Card_back-Shado-pan.png?version=f698a6dc7deaf980b92d346d9e0f9609'},
+    {id: 'Raven', name: 'Year of the Raven', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/5a/Card_back-Year_of_the_Raven.png?version=876091440b1139c744c05e19aa278a2a'},
+    {id: 'SoDunes', name: 'Sea of Dunes', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/91/Card_back-Sea_of_Dunes.png?version=5ee7ea17732bbbc7dd09580afaf669bf'},
+    {id: 'DmoonFaire', name: 'Darkmoon Faire', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/5c/Card_back-Darkmoon_Faire.png?version=90487125c13cbeea3b6350be0db1a71f'},
+    {id: 'CakeotD', name: 'Cake of the Dead', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/f/fc/Card_back-Cake_of_the_Dead.png?version=8176c147933b632333b6ea0b1f1acf72'},
+    {id: 'HFirePen', name: 'Hellfire Peninsula', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e0/Card_back-Hellfire_Peninsula.png?version=d35cb93640681f16d5e7ad1bf72ba1a4'},
+    {id: 'Shorup', name: 'Shoring Up', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/b7/Card_back-Shoring_Up.png?version=1b4326369b9d18da1047c5a7b13aae43'},
+    {id: 'DBloom', name: 'Desert Bloom', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7f/Card_back-Desert_Bloom.png?version=331aef354589e8ee4f2e180f6642097a'},
+    {id: 'Koi', name: 'Playing Koi', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/bd/Card_back-Playing_Koi.png?version=566032177308961fb7aff015f4007167'},
+    {id: 'Bluroom', name: 'Blushroom', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/37/Card_back-Blushroom.png?version=8eb3465ce0c0aad41ce75110f50ac427'},
+    {id: 'SLight', name: 'Swamp Light', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/33/Card_back-Swamp_Light.png?version=54e5f2ed40c7a6cd661b41628ea09438'},
+    {id: 'HNaxx', name: 'Heroic Naxxramas', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/33/Card_back-Heroic_Naxxramas.png?version=d9f54c1bb163e3760fd2f1217dfe2de0'},
+    {id: 'Nef', name: 'Nefarian', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/47/Card_back-Nefarian.png?version=49e39007fc8e8f4c3c083b12f9f0c04f'},
+    {id: 'SoOrigin', name: 'Staff of Origination', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/34/Card_back-Staff_of_Origination.png?version=6553dda2e3d1940f9043a99e6c1da1a0'},
+    {id: 'BPortal', name: 'The Blue Portal', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7e/Card_back-The_Blue_Portal.png?version=37a3af64b435b73c035f053c493b4e08'},
+    {id: 'CKing', name: 'Candle King', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7b/Card_back-Candle_King.png?version=c4e79eec568585114bc855864daedb62'},
+    {id: 'MHunt', name: 'Monster Hunt', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e1/Card_back-Monster_Hunter.png?version=4a48051547b45f7bacb17d9ae1f63d84'},
+    {id: 'Boomsday', name: 'Boomsday!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7b/Card_back-Boomsday%21.png?version=ef29060cf87a780819e4c843d2b2a62c'},
+    {id: 'RRunner', name: 'Rumble Runner', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/0c/Card_back-Rumble_Runner.png?version=2f6065f7d61fd2ef9f81cb057acb1c3e'},
+    {id: 'PoShad', name: 'Prize of Shadows', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/d5/Card_back-Prize_of_Shadows.png?version=c409bc9be59d4f6caf4e8b4272f62e87'},
+    {id: 'GAwI', name: 'Got Away with It!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/36/Card_back-Got_Away_with_It%21.png?version=83345473dec57e0346aa8f2137bed610'},
+    {id: 'TitanT', name: 'Titanic Task', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/53/Card_back-Titanic_Tasks.png?version=843556db72e1f0607e6be2e30826f9ff'},
+    {id: 'ToTerr', name: 'Tomb Invader', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/62/Card_back-Tomb_Invader.png?version=21089aeb34aa144198a131df0a4de90e'},
+    {id: 'BoEVIL', name: 'Book of E.V.I.L.', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/a1/Card_back-Book_of_E.V.I.L..png?version=c81a271ef499872081650ac14977196c'},
+    {id: 'BoEXplo', name: 'Book of Explorers', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/69/Card_back-Book_of_Explorers.png?version=1dca830a554d2c2c935250405d672407'},
+    {id: 'MCore', name: 'Molten Core', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/5e/Card_back-Molten_Core.png?version=77afd910e3f8b8fe9c3d45dc020c69c6'},
+    {id: 'TGTourn', name: 'The Grand Tournament', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/98/Card_back-The_Grand_Tournament.png?version=4ba2f5157cba4e86ff94cff7e643df34'},
+    {id: 'EyesoC', name: "Eyes of C'thun", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/5d/Card_back-Eyes_of_C%27Thun.png?version=19c360e70d4838c6e81656509fffee04'},
+    {id: 'Karazhan', name: 'Karazhan Nights', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/93/Card_back-Karazhan_Nights.png?version=054056449658a6ff8e058246bbcfcbf6'},
+    {id: 'Foss', name: 'Fossil', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/f/fd/Card_back-Fossil.png?version=ee293e73e9acc239676041a969566784'},
+    {id: 'FMourne', name: 'Frostmourne', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/97/Card_back-Frostmourne.png?version=839c6f480ce4897154f45ca7ba0f9187'},
+    {id: 'FtHord', name: 'For the Hoard!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/9b/Card_back-For_the_Hoard%21.png?version=3c2f952886610b96f7c71108436de0d9'},
+    {id: 'IaDWood', name: 'In a Dark Wood', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/ae/Card_back-In_a_Dark_Wood.png?version=966cf88756a9db18b07b2aba84482525'},
+    {id: 'MJaraxx', name: 'Mecha-Jaraxxus', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/83/Card_back-Mecha-Jaraxxus.png?version=bfd62931f5275dd5acff2e778647dd6f'},
+    {id: 'RtRum', name: 'Ready to Rumble!', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/3e/Card_back-Ready_to_Rumble%21.png?version=039e1c29cf180bfc7c5d7aa0d8128ef5'},
+    {id: 'JoLaz', name: 'Jewel of Lazul', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/2c/Card_back-Jewel_of_Lazul.png?version=c68b1c18d121b137153c00531ee79c1f'},
+    {id: 'Elise', name: "Elise's Journal", image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e7/Card_back-Elise%27s_Journal.png?version=e0752c8e14e1333cad05f46c5a8eaa39'},
+    {id: 'LoExplor', name: 'League of Explorers', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/9/96/Card_back-League_of_Explorers.png?version=ace9a3f337998b22134d08472a042b31'},
+    {id: 'Shat', name: 'The Shattering', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/32/Card_back-The_Shattering.png?version=c7967e46a6c58109f69870cb54cd8fb6'},
+    {id: 'Serp', name: 'Serpentine', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/a/ab/Card_back-Serpentine.png?version=712e5097aae831860e6ba36e9804fc0f'},
+    {id: 'Medivh', name: 'Medivh', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/0/05/Card_back-Medivh.png?version=2203a6c738efc662d1ea04f11c265fb4'},
+    {id: 'Magni', name: 'Magni', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/3d/Card_back-Magni.png?version=f187852b1d2784a19a8823210392a77d'},
+    {id: 'Tyrande', name: 'Tyrande', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/eb/Card_back-Tyrande.png?version=e0a05702e684cd47dfa9053faf4d204d'},
+    {id: 'Stolen', name: 'Stolen Thunder', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/f/f8/Card_back-Stolen_Thunder.png?version=6000ed397efafd2b3c3ba74821da94b4'},
+    {id: 'Banshee', name: 'Banshee Queen', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/1/16/Card_back-Banshee_Queen.png?version=4af5972edaba1dc4415f920927319166'},
+    {id: 'Dame', name: 'Dame Hazelbark', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/35/Card_back-Dame_Hazelbark.png?version=f9bf800b788b7fa663626c48f50f1de2'},
+    {id: 'Wondrous', name: 'Wondrous Wisdom', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e8/Card_back-Wondrous_Wisdomcard.png?version=d07b5d781b420e5094b1285c3616e2ab'},
+    {id: 'Secret', name: 'Secret Level', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/d5/Card_back-Secret_Level.png?version=2126c468762eda5ba299c65e9e4f2e88'},
+    {id: 'WVW', name: 'Winter Veil Wreath', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7d/Card_back-Winter_Veil_Wreath.png?version=7a9df3443fc0c92ccd1825857fc95acc'},
+    {id: 'WVT', name: 'Winter Veil Treat', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/2d/Card_back-Winter_Veil_Treat.png?version=6549a916e94ae0a20417919d0b0d6dd5'},
+    {id: 'HotS', name: 'Heroes of the Storm', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/7b/Card_back-Heroes_of_the_Storm.png?version=7310a22003f07d3563c6a2b8562952be'},
+    {id: 'War', name: 'Warlords', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/7/79/Card_back-Warlords.png?version=696503beedc5ba09b4837cca37816831'},
+    {id: 'LotV', name: 'Legacy of the Void', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/22/Card_back-Legacy_of_the_Void.png?version=dd8f11d1818cbfe500b4576a53c62be3'},
+    {id: 'OW', name: 'Overwatch', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/2/2e/Card_back-Overwatch.png?version=d94a8abf94df9149a44ac925fcc62bee'},
+    {id: 'TTWar', name: 'The Third War', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/34/Card_back-The_Third_War.png?version=b9c9deaa2b80be128616d3c5b9dbb03b'},
+    {id: 'B2014', name: 'Blizzard 2014', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/b/b7/Card_back-Blizzard_2014.png?version=2f8bbcdca7e144facbcba5435bc5b7ca'},
+    {id: 'B2015', name: 'Blizzard 2015', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/e/e3/Card_back-Blizzard_2015.png?version=d001bc3e1aa80d4b7dac4aab0b9cab8a'},
+    {id: 'WInn', name: 'Welcome Inn', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/36/Card_back-Welcome_Inn.png?version=009e4fd773d7656991c43486a8639164'},
+    {id: 'BEvents', name: 'Blizzard Events 2018', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/57/Card_back-Blizzard_Events_2018.png?version=9edce1b6b5220678edaf1ec4f199e219'},
+    {id: 'BEvents2019', name: 'Blizzard Events 2019', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/5/52/Card_back-Blizzard_Events_2019.png?version=7a066839b3436ffdd52aeb048eac2669'},
+    {id: 'YotDrag', name: 'Year of the Dragon', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/d/d8/Card_back-Year_of_the_Dragon.png?version=3933b84278aa9d2b60d654cc1321a3cd'},
+    {id: 'DFlame', name: 'Dalaran Flame', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/31/Card_back-Dalaran_Flame.png?version=a4821749b236686a75e3965650f883f0'},
+    {id: 'PCore', name: 'Power Core', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/4b/Card_back-Power_Core.png?version=04d487536765c5c940cd8ba42ee559ca'},
+    {id: 'ToVict', name: 'Thrill of Victory', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/8/8a/Card_back-Thrill_of_Victory.png?version=7211d86fd5c3e3b858cb6ec6d908c90d'},
+    {id: 'GCeleb', name: 'Golden Celebration', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/3/39/Card_back-Golden_Celebration.png?version=681f7eef59a6cc897c822ad39b5d9ef5'},
+    {id: 'GCheer', name: 'Good Cheer', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/4/4c/Card_back-Good_Cheer.png?version=ac87599ae1dcb9aae79757ff5c91c520'},
+    {id: 'CotLight', name: 'Call of the Light', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/f/f3/Card_back-Call_of_the_Light.png?version=d1a90a1443a1ea82fe70de621d29b9c5'},
+    {id: 'CotVoid', name: 'Call of the Void', image: 'https://gamepedia.cursecdn.com/hearthstone_gamepedia/6/62/Card_back-Call_of_the_Void.png?version=9b5dd7cd57303e31fb15eb7a7a7bb6a0'}
+];
+
+var myPicker = new picker.Picker({
+    items: items,
+    localStorageKey: 'picker-state',
+    defaultSettings: {
+        minBatchSize: 2,
+        maxBatchSize: 2
+    }
+});
+
+var pickerUI = new PickerUI(myPicker, {
+    elements: {
+        pick: "#pick",
+        pass: "#pass",
+        undo: "#undo",
+        redo: "#redo",
+        evaluating: "#evaluating",
+        favorites: "#favorites"
+    }
+});
+
+pickerUI.initialize();
+
+/* Sortable favorites - you can safely remove this, and the Sortable.min.js script, if you don't want to be able to sort your favorite list. */
+var sortable = new Sortable(pickerUI.elem.favorites.get(0), {
+    draggable: '.item',
+    animation: 100,
+    onStart: function() {
+        pickerUI.elem.favorites.addClass("sorting");
+    },
+    onEnd: function() {
+        pickerUI.elem.favorites.removeClass("sorting");
+    },
+    onUpdate: function() {
+        myPicker.setFavorites(pickerUI.elem.favorites.children().map(function() {
+            return pickerUI.getItem(this);
+        }).get());
+        pickerUI.update(true);
+    }
+});
+/* End sortable favorites */
+</script>
+</body>
+</html>
